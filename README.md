@@ -162,7 +162,7 @@ jobs:
 
       - name: "Create Review-App on VitoDeploy"
         id: vito-deploy-review-app
-        uses: web-id-fr/viteo-deploy-review-app-action@dev-main
+        uses: web-id-fr/vito-deploy-review-app-action@main
         with:
           debug: "true"
           api_base_url: "https://your-vito-instance.tld/api"
