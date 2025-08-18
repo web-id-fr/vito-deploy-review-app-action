@@ -155,7 +155,7 @@ jobs:
             .github/workflows/deploy-script.stub
           sparse-checkout-cone-mode: false
 
-      # Optional: If you need to inject secrets in you .env file, you can use this
+      # Optional: If you need to inject secrets in your .env file, you can use this
       - name: "Replace env vars in local env stub file"
         run: |
           sed -i -e "s#SENTRY_LARAVEL_DSN=.*#SENTRY_LARAVEL_DSN='${{ secrets.SENTRY_DSN }}'#" .github/workflows/.env.stub
@@ -164,7 +164,6 @@ jobs:
         id: vito-deploy-review-app
         uses: web-id-fr/vito-deploy-review-app-action@main
         with:
-          debug: "true"
           api_base_url: "https://your-vito-instance.tld/api"
           api_token: ${{ secrets.VITO_REVIEW_APP_SERVER_ID }}
           project_id: "1"
