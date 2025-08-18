@@ -1,0 +1,165 @@
+name: 'VitoDeploy Review-app Action'
+description: 'Create/update and deploy a review-application to VitoDeploy'
+author: 'rygilles'
+
+branding:
+  icon: upload-cloud
+  color: green
+
+inputs:
+  api_base_url:
+    description: 'API URL (e.g.: "https://vito.test/api")'
+    required: true
+  api_token:
+    description: 'API key'
+    required: true
+  project_id:
+    description: 'Project ID'
+    required: true
+  server_id:
+    description: 'Server ID'
+    required: true
+  source_control:
+    description: 'Source Control ID'
+    required: true
+  root_domain:
+    description: 'Root domain under which to create review-app site'
+    required: false
+  host:
+    description: 'Site host of the review-app'
+    required: false
+  prefix_with_pr_number:
+    description: 'Use the pull-request number as host and database prefix when host is not manually defined'
+    required: false
+    default: 'true'
+  fqdn_prefix:
+    description: 'Prefix the whole FQDN (e.g.: "app.")'
+    required: false
+  type:
+    description: 'Site type of the review-app'
+    required: false
+    default: 'php'
+  web_directory:
+    description: 'Root directory for nginx configuration of the review-app'
+    required: false
+    default: 'public'
+  isolated:
+    description: 'Isolate review-app site'
+    required: false
+    default: 'false'
+  php_version:
+    description: 'PHP version of the review-app site'
+    required: false
+    default: '8.3'
+  site_setup_timeout:
+    description: 'Maximum wait time in seconds for site creation'
+    required: false
+    default: '600'
+  create_database:
+    description: 'Create database for review-app'
+    required: false
+    default: 'false'
+  database_setup_timeout:
+    description: 'Maximum wait time in seconds for database creation'
+    required: false
+    default: '60'
+  create_database_user:
+    description: 'Create database user for review-app'
+    required: false
+    default: 'false'
+  database_user:
+    description: 'Database user of the review-app site'
+    required: false
+    default: 'vito'
+  database_user_id:
+    description: 'Database user ID of the review-app site'
+    required: false
+  database_password:
+    description: 'Database password of the review-app site'
+    required: false
+  database_name:
+    description: 'Database name of the review-app site'
+    required: false
+  database_name_prefix:
+    description: 'Database name prefix, useful for PostgreSQL that does not support digits (PR number) for first chars'
+  database_charset:
+    description: 'Database charset of the review-app site'
+    required: false
+  database_collation:
+    description: 'Database collation of the review-app site'
+    required: false
+  repository:
+    description: 'Repository of review-app site'
+    required: false
+  branch:
+    description: 'Git branch to use'
+    required: false
+  composer:
+    description: 'Composer install on repository setup'
+    required: false
+    default: 'false'
+  env_stub_path:
+    description: '.env stub file path inside git repository'
+    required: false
+    default: '.github/workflows/.env.stub'
+  deploy_script_stub_path:
+    description: 'Deploy script stub file path inside the git repository'
+    required: false
+    default: '.github/workflows/deploy-script.stub'
+  deployment_timeout:
+    description: 'Maximum wait time in seconds for deploying'
+    required: false
+    default: '120'
+  debug:
+    description: 'Enable debug mode.'
+    required: false
+
+outputs:
+  host:
+    description: 'Host of the review-app (generated or forced one in inputs)'
+  database_user_id:
+    description: 'VitoDeploy database user ID of the review-app'
+  database_name:
+    description: 'Database name of the review-app (generated or forced one in inputs)'
+  database_id:
+    description: 'VitoDeploy database ID of the review-app'
+  site_id:
+    description: 'VitoDeploy site ID of the review-app'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    INPUT_API_BASE_URL: ${{ inputs.api_base_url }}
+    INPUT_API_TOKEN: ${{ inputs.api_token }}
+    INPUT_PROJECT_ID: ${{ inputs.project_id }}
+    INPUT_SERVER_ID: ${{ inputs.server_id }}
+    INPUT_SOURCE_CONTROL: ${{ inputs.source_control }}
+    INPUT_ROOT_DOMAIN: ${{ inputs.root_domain }}
+    INPUT_HOST: ${{ inputs.host }}
+    INPUT_PREFIX_WITH_PR_NUMBER: ${{ inputs.prefix_with_pr_number }}
+    INPUT_FQDN_PREFIX: ${{ inputs.fqdn_prefix }}
+    INPUT_TYPE: ${{ inputs.type }}
+    INPUT_WEB_DIRECTORY: ${{ inputs.web_directory }}
+    INPUT_ISOLATED: ${{ inputs.isolated }}
+    INPUT_PHP_VERSION: ${{ inputs.php_version }}
+    INPUT_SITE_SETUP_TIMEOUT: ${{ inputs.site_setup_timeout }}
+    INPUT_CREATE_DATABASE: ${{ inputs.create_database }}
+    INPUT_DATABASE_SETUP_TIMEOUT: ${{ inputs.database_setup_timeout }}
+    INPUT_CREATE_DATABASE_USER: ${{ inputs.create_database_user }}
+    INPUT_DATABASE_USER: ${{ inputs.database_user }}
+    INPUT_DATABASE_USER_ID: ${{ inputs.database_user_id }}
+    INPUT_DATABASE_PASSWORD: ${{ inputs.database_password }}
+    INPUT_DATABASE_NAME: ${{ inputs.database_name }}
+    INPUT_DATABASE_NAME_PREFIX: ${{ inputs.database_name_prefix }}
+    INPUT_DATABASE_CHARSET: ${{ inputs.database_charset }}
+    INPUT_DATABASE_COLLATION: ${{ inputs.database_collation }}
+    INPUT_REPOSITORY: ${{ inputs.repository }}
+    INPUT_BRANCH: ${{ inputs.branch }}
+    INPUT_COMPOSER: ${{ inputs.composer }}
+    INPUT_LETSENCRYPT_CERTIFICATE: ${{ inputs.letsencrypt_certificate }}
+    INPUT_CERTIFICATE_SETUP_TIMEOUT: ${{ inputs.certificate_setup_timeout }}
+    INPUT_ENV_STUB_PATH: ${{ inputs.env_stub_path }}
+    INPUT_DEPLOY_SCRIPT_STUB_PATH: ${{ inputs.deploy_script_stub_path }}
+    INPUT_DEPLOYMENT_TIMEOUT: ${{ inputs.deployment_timeout }}
+    INPUT_DEBUG: ${{ inputs.debug }}
