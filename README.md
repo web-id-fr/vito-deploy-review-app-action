@@ -5,6 +5,10 @@ Create/update and deploy a review-application on a [VitoDeploy](https://vitodepl
 > [!IMPORTANT]  
 > This is a GitHub action under development, no release has been made yet. Use with caution!
 
+## Requirements
+
+- [VitoDeploy v3.3.0](https://github.com/vitodeploy/vito/releases/tag/3.3.0)
+
 ## Description
 
 This action allows you to automatically create/update and deploy a review-app site on a server managed by a VitoDeploy instance when you open a pull-request or push to a branch.
