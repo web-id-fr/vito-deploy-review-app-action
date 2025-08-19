@@ -834,7 +834,7 @@ fi
 echo ""
 echo "* Launch deployment"
 
-API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/sites/$SITE_ID/deploy"
+API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/sites/$SITE_ID/deployments"
 
 HTTP_STATUS=$(
   curl -s -o response.json -w "%{http_code}" \
@@ -859,7 +859,7 @@ if [[ $INPUT_DEBUG == 'true' ]]; then
   echo ""
 fi
 
-if [[ $HTTP_STATUS -eq 200 ]]; then
+if [[ $HTTP_STATUS -eq 201 ]]; then
   echo "Deployment launched successfully"
 else
   echo "Failed to launch deployment. HTTP status code: $HTTP_STATUS"
@@ -868,5 +868,64 @@ else
   exit 1
 fi
 
-# TODO: Deployment logs? Check if ok
+echo ""
+echo "* Wait for deployment to be fully done"
+
+DEPLOYMENT_DATA=$(cat response.json)
+DEPLOYMENT_ID=$(echo "$DEPLOYMENT_DATA" | jq -r '.id')
+
+API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/sites/$SITE_ID/deployments/$DEPLOYMENT_ID"
+
+start_time=$(date +%s)
+elapsed_time=0
+status=""
+
+while [[ "$status" != "finished" && "$elapsed_time" -lt $INPUT_DEPLOYMENT_TIMEOUT ]]; do
+  if [[ $INPUT_DEBUG == 'true' ]]; then
+    echo "[DEBUG] CURL GET on $API_URL "
+    echo ""
+  fi
+
+  HTTP_STATUS=$(
+    curl -s -o response.json -w "%{http_code}" \
+    -X GET \
+    -H "$AUTH_HEADER" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    "$API_URL"
+  )
+
+  JSON_RESPONSE=$(cat response.json)
+
+  if [[ $INPUT_DEBUG == 'true' ]]; then
+    echo "[DEBUG] response JSON:"
+    echo $JSON_RESPONSE
+    echo ""
+  fi
+
+  if [[ "$HTTP_STATUS" != "200" ]]; then
+    echo "Response code is not 200 but $HTTP_STATUS"
+    echo "API Response:"
+    echo "$JSON_RESPONSE"
+    exit 1
+  fi
+
+  status=$(echo "$JSON_RESPONSE" | jq -r '."status"')
+
+  if [[ "$status" != "finished" ]]; then
+    echo "Status is not \"finished\" (but \""$status"\"), retrying in 5 seconds..."
+    sleep 5
+  fi
+
+  current_time=$(date +%s)
+  elapsed_time=$((current_time - start_time))
+done
+
+if [[ "$status" != "finished" ]]; then
+  echo "Timeout reached, exiting retry loop."
+  exit 1
+else
+  echo "Deployment finished successfully"
+fi
+
 # TODO: Workers
