@@ -113,6 +113,7 @@ inputs:
   debug:
     description: 'Enable debug mode.'
     required: false
+    default: 'false'
 
 outputs:
   host:

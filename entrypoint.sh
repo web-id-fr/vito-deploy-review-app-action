@@ -3,9 +3,7 @@ set -e
 
 # Prepare vars and default values
 
-if [[ -z "$INPUT_DEBUG" ]]; then
-  $INPUT_DEBUG='false'
-fi
+INPUT_DEBUG="${INPUT_DEBUG:-false}"
 
 if [[ $INPUT_DEBUG == 'true' ]]; then
   echo "!!! DEBUG MODE ENABLED !!!"
