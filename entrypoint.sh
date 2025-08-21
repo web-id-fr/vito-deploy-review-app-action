@@ -370,7 +370,152 @@ if [[ $RA_FOUND == 'false' ]]; then
   fi
 fi
 
-# TODO: SSL, how? Not supported in the API
+if [[ $INPUT_LETSENCRYPT_CERTIFICATE == 'true' ]]; then
+  echo ""
+  echo "* Check if site has a certificate"
+
+  API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/sites/$SITE_ID/ssls"
+
+  if [[ $INPUT_DEBUG == 'true' ]]; then
+    echo "[DEBUG] CURL GET on $API_URL"
+    echo ""
+  fi
+
+  HTTP_STATUS=$(
+    curl -s -o response.json -w "%{http_code}" \
+    -X GET \
+    -H "$AUTH_HEADER" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    "$API_URL"
+  )
+
+  if [[ $INPUT_DEBUG == 'true' ]]; then
+    echo "[DEBUG] response JSON:"
+    cat response.json
+    echo ""
+  fi
+
+  if [[ $HTTP_STATUS -eq 200 ]]; then
+    echo "Fetched site certificates successfully"
+    if jq -e '.data | length > 0' response.json > /dev/null; then
+      echo "Site has at least one certificate"
+      CERTIFICATE_FOUND='true'
+    else
+      echo "Site has no certificate"
+      CERTIFICATE_FOUND='false'
+    fi
+  else
+    echo "Failed to fetch site certificates. HTTP status code: $HTTP_STATUS"
+    echo "JSON Response:"
+    cat response.json
+    exit 1
+  fi
+
+  if [[ $CERTIFICATE_FOUND == 'false' ]]; then
+    echo ""
+    echo "* Obtain Let's Encrypt certificate"
+
+    API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/sites/$SITE_ID/ssls/letsencrypt"
+
+    JSON_PAYLOAD='{
+      "email": "'"$INPUT_LETSENCRYPT_EMAIL"'"
+    }'
+
+    if [[ $INPUT_DEBUG == 'true' ]]; then
+      echo "[DEBUG] CURL POST on $API_URL with payload :"
+      echo $JSON_PAYLOAD
+      echo ""
+    fi
+
+    HTTP_STATUS=$(
+      curl -s -o certificate.json -w "%{http_code}" \
+      -X POST \
+      -H "$AUTH_HEADER" \
+      -H "Accept: application/json" \
+      -H "Content-Type: application/json" \
+      -d "$JSON_PAYLOAD" \
+      "$API_URL"
+    )
+
+    JSON_RESPONSE=$(cat certificate.json)
+
+    if [[ $INPUT_DEBUG == 'true' ]]; then
+      echo "[DEBUG] response JSON:"
+      echo $JSON_RESPONSE
+      echo ""
+    fi
+
+    if [[ $HTTP_STATUS -eq 201 ]]; then
+      echo "Request for a let's encrypt certificate sent successfully"
+    else
+      echo "Failed to request let's encrypt certificate. HTTP status code: $HTTP_STATUS"
+      echo "JSON Response:"
+      echo "$JSON_RESPONSE"
+      exit 1
+    fi
+
+    echo ""
+    echo "* Wait for certificate to be installed"
+
+    CERTIFICATE_DATA=$(cat certificate.json)
+    CERTIFICATE_ID=$(echo "$CERTIFICATE_DATA" | jq -r '.id')
+
+    API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/sites/$SITE_ID/ssls/$CERTIFICATE_ID"
+
+    start_time=$(date +%s)
+    elapsed_time=0
+    status=""
+
+    while [[ "$status" != "created" && "$elapsed_time" -lt $INPUT_CERTIFICATE_SETUP_TIMEOUT ]]; do
+      if [[ $INPUT_DEBUG == 'true' ]]; then
+        echo "[DEBUG] CURL GET on $API_URL "
+        echo ""
+      fi
+
+      HTTP_STATUS=$(
+        curl -s -o response.json -w "%{http_code}" \
+        -X GET \
+        -H "$AUTH_HEADER" \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        "$API_URL"
+      )
+
+      JSON_RESPONSE=$(cat response.json)
+
+      if [[ $INPUT_DEBUG == 'true' ]]; then
+        echo "[DEBUG] response JSON:"
+        echo $JSON_RESPONSE
+        echo ""
+      fi
+
+      if [[ "$HTTP_STATUS" != "200" ]]; then
+        echo "Response code is not 200 but $HTTP_STATUS"
+        echo "API Response:"
+        echo "$JSON_RESPONSE"
+        exit 1
+      fi
+
+      status=$(echo "$JSON_RESPONSE" | jq -r '.status')
+
+      if [[ "$status" != "created" ]]; then
+        echo "Status is not "installed" ($status), retrying in 5 seconds..."
+        sleep 5
+      fi
+
+      current_time=$(date +%s)
+      elapsed_time=$((current_time - start_time))
+    done
+
+    if [[ "$status" != "created" ]]; then
+      echo "Timeout reached, exiting retry loop."
+      exit 1
+    else
+      echo "Certificate installed successfully"
+    fi
+  fi
+fi
 
 if [[ $INPUT_CREATE_DATABASE == 'true' ]]; then
   if [[ $INPUT_CREATE_DATABASE_USER == 'true' ]]; then
