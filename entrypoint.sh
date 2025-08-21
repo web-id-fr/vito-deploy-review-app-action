@@ -347,6 +347,11 @@ if [[ $RA_FOUND == 'false' ]]; then
 
     status=$(echo "$JSON_RESPONSE" | jq -r '."status"')
 
+    if [[ "$status" == "installation_failed" ]]; then
+      echo "Status is \"installation_failed\""
+      exit 1
+    fi
+
     if [[ "$status" != "ready" ]]; then
       echo "Status is not \"ready\" (but \""$status"\"), retrying in 5 seconds..."
       sleep 5
