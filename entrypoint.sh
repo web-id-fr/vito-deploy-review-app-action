@@ -456,7 +456,7 @@ if [[ $INPUT_LETSENCRYPT_CERTIFICATE == 'true' ]]; then
     fi
 
     echo ""
-    echo "* Wait for certificate to be installed"
+    echo "* Wait for certificate to be created"
 
     CERTIFICATE_DATA=$(cat certificate.json)
     CERTIFICATE_ID=$(echo "$CERTIFICATE_DATA" | jq -r '.id')
@@ -500,7 +500,7 @@ if [[ $INPUT_LETSENCRYPT_CERTIFICATE == 'true' ]]; then
       status=$(echo "$JSON_RESPONSE" | jq -r '.status')
 
       if [[ "$status" != "created" ]]; then
-        echo "Status is not "installed" ($status), retrying in 5 seconds..."
+        echo "Status is not "created" ($status), retrying in 5 seconds..."
         sleep 5
       fi
 
@@ -512,7 +512,7 @@ if [[ $INPUT_LETSENCRYPT_CERTIFICATE == 'true' ]]; then
       echo "Timeout reached, exiting retry loop."
       exit 1
     else
-      echo "Certificate installed successfully"
+      echo "Certificate created successfully"
     fi
   fi
 fi
