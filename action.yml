@@ -98,6 +98,17 @@ inputs:
     description: 'Composer install on repository setup'
     required: false
     default: 'false'
+  letsencrypt_certificate:
+    description: 'Obtain LetsEncrypt certificate for the review-app site'
+    required: false
+    default: 'true'
+  letsencrypt_email:
+    description: 'LetsEncrypt account email'
+    required: false
+  certificate_setup_timeout:
+    description: 'Maximum wait time in seconds for obtaining the certificate'
+    required: false
+    default: '120'
   env_stub_path:
     description: '.env stub file path inside git repository'
     required: false
@@ -159,6 +170,7 @@ runs:
     INPUT_BRANCH: ${{ inputs.branch }}
     INPUT_COMPOSER: ${{ inputs.composer }}
     INPUT_LETSENCRYPT_CERTIFICATE: ${{ inputs.letsencrypt_certificate }}
+    INPUT_LETSENCRYPT_EMAIL: ${{ inputs.letsencrypt_email }}
     INPUT_CERTIFICATE_SETUP_TIMEOUT: ${{ inputs.certificate_setup_timeout }}
     INPUT_ENV_STUB_PATH: ${{ inputs.env_stub_path }}
     INPUT_DEPLOY_SCRIPT_STUB_PATH: ${{ inputs.deploy_script_stub_path }}
