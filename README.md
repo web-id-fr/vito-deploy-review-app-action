@@ -7,7 +7,7 @@ Create/update and deploy a review-application on a [VitoDeploy](https://vitodepl
 
 ## Requirements
 
-- [VitoDeploy v3.3.0](https://github.com/vitodeploy/vito/releases/tag/3.3.0)
+- [VitoDeploy v3.5.0](https://github.com/vitodeploy/vito/releases/tag/3.5.0)
 
 ## Description
 
@@ -22,11 +22,12 @@ All steps are done using the VitoDeploy API.
 
 - Create site and database if not done yet. (Auto link the user to the database too)
 - Configure repository.
-- ~~Obtain Let's Encrypt certificate.~~ (TODO)
+- Obtain Let's Encrypt certificate.
 - Setup .env file using [stub file](#stub-files).
 - Setup deploy script using [stub file](#stub-files).
 - Launch deployment.
-- ~~Check deployment and display result output.~~ (TODO)
+- Check deployment ~~and display result output.~~ (TODO)
+- Setup worker.
 
 ### Optional inputs variables
 
@@ -117,6 +118,14 @@ It is highly recommended that you store all inputs using [GitHub Secrets](https:
 | `env_stub_path`           | no       | `.github/workflows/.env.stub`          | .env stub file path inside git repository.                                                                                                  |
 | `deploy_script_stub_path` | no       | `.github/workflows/deploy-script.stub` | Deploy script stub file path inside the git repository.                                                                                     |
 | `deployment_timeout`      | no       | `120`                                  | Maximum wait time in seconds for deploying.                                                                                                 |
+| `create_worker`           | no       | `false`                                | Create site worker.                                                                                                                         |
+| `worker_setup_timeout`    | no       | `60`                                   | Maximum wait time in seconds for worker creation.                                                                                           |
+| `worker_name`             | no       |                                        | Worker name (Supervisor configuration).                                                                                                     |
+| `worker_command`          | no       |                                        | Worker command (Supervisor configuration).                                                                                                  |
+| `worker_user`             | no       | `vito`                                 | Worker user (Supervisor configuration).                                                                                                     |
+| `worker_auto_start`       | no       | `1`                                    | Worker auto start (Supervisor configuration).                                                                                               |
+| `worker_auto_restart`     | no       | `1`                                    | Worker auto restart (Supervisor configuration).                                                                                             |
+| `worker_numprocs`         | no       | `1`                                    | Worker number of precess (Supervisor configuration).                                                                                        |
 | `debug`                   | no       | `false`                                | Enable debug output.                                                                                                                        |
 
 ## Outputs

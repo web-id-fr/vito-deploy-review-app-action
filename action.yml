@@ -121,6 +121,36 @@ inputs:
     description: 'Maximum wait time in seconds for deploying'
     required: false
     default: '120'
+  create_worker:
+    description: 'Create site worker'
+    required: false
+    default: 'false'
+  worker_setup_timeout:
+    description: 'Maximum wait time in seconds for worker creation'
+    required: false
+    default: '60'
+  worker_name:
+    description: 'Worker name (Supervisor configuration)'
+    required: true
+  worker_command:
+    description: 'Worker command (Supervisor configuration)'
+    required: true
+  worker_user:
+    description: 'Worker user (Supervisor configuration)'
+    required: false
+    default: 'vito'
+  worker_auto_start:
+    description: 'Worker auto start (Supervisor configuration)'
+    required: false
+    default: 'true'
+  worker_auto_restart:
+    description: 'Worker auto restart (Supervisor configuration)'
+    required: false
+    default: 'true'
+  worker_numprocs:
+    description: 'Worker number of precess (Supervisor configuration)'
+    required: false
+    default: '1'
   debug:
     description: 'Enable debug mode.'
     required: false
@@ -137,6 +167,8 @@ outputs:
     description: 'VitoDeploy database ID of the review-app'
   site_id:
     description: 'VitoDeploy site ID of the review-app'
+  worker_id:
+    description: 'VitoDeploy Worker ID'
 
 runs:
   using: 'docker'
@@ -175,4 +207,12 @@ runs:
     INPUT_ENV_STUB_PATH: ${{ inputs.env_stub_path }}
     INPUT_DEPLOY_SCRIPT_STUB_PATH: ${{ inputs.deploy_script_stub_path }}
     INPUT_DEPLOYMENT_TIMEOUT: ${{ inputs.deployment_timeout }}
+    INPUT_CREATE_WORKER: ${{ inputs.create_worker }}
+    INPUT_WORKER_SETUP_TIMEOUT: ${{ inputs.worker_setup_timeout }}
+    INPUT_WORKER_NAME: ${{ inputs.worker_name }}
+    INPUT_WORKER_COMMAND: ${{ inputs.worker_command }}
+    INPUT_WORKER_USER: ${{ inputs.worker_user }}
+    INPUT_WORKER_AUTO_START: ${{ inputs.worker_auto_start }}
+    INPUT_WORKER_AUTO_RESTART: ${{ inputs.worker_auto_restart }}
+    INPUT_WORKER_NUMPROCS: ${{ inputs.worker_numprocs }}
     INPUT_DEBUG: ${{ inputs.debug }}
