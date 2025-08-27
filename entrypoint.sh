@@ -154,40 +154,28 @@ if [[ -z "$INPUT_CREATE_WORKER" ]]; then
   INPUT_CREATE_WORKER='false'
 fi
 
-if [[ -z "$INPUT_WORKER_CONNECTION" ]]; then
-  INPUT_WORKER_CONNECTION='redis'
+if [[ -z "$INPUT_WORKER_SETUP_TIMEOUT" ]]; then
+  INPUT_WORKER_SETUP_TIMEOUT='60'
 fi
 
-if [[ -z "$INPUT_WORKER_TIMEOUT" ]]; then
-  INPUT_WORKER_TIMEOUT='90'
+if [[ -z "$INPUT_WORKER_USER" ]]; then
+  INPUT_WORKER_USER='vito'
 fi
 
-if [[ -z "$INPUT_WORKER_SLEEP" ]]; then
-  INPUT_WORKER_SLEEP='60'
+if [[ -z "$INPUT_WORKER_AUTO_START" ]]; then
+  INPUT_WORKER_AUTO_START='true'
 fi
 
-if [[ -z "$INPUT_WORKER_PROCESSES" ]]; then
-  INPUT_WORKER_PROCESSES='1'
+if [[ -z "$INPUT_WORKER_AUTO_RESTART" ]]; then
+  INPUT_WORKER_AUTO_RESTART='true'
 fi
 
-if [[ -z "$INPUT_WORKER_STOPWAITSECS" ]]; then
-  INPUT_WORKER_STOPWAITSECS='600'
-fi
-
-if [[ -z "$INPUT_WORKER_PHP_VERSION" ]]; then
-  INPUT_WORKER_PHP_VERSION=$INPUT_PHP_VERSION
+if [[ -z "$INPUT_WORKER_NUMPROCS" ]]; then
+  INPUT_WORKER_NUMPROCS='1'
 fi
 
 if [[ -z "$INPUT_SITE_SETUP_TIMEOUT" ]]; then
   INPUT_SITE_SETUP_TIMEOUT='600'
-fi
-
-if [[ -z "$INPUT_WORKER_DAEMON" ]]; then
-  INPUT_WORKER_DAEMON='true'
-fi
-
-if [[ -z "$INPUT_WORKER_FORCE" ]]; then
-  INPUT_WORKER_FORCE='false'
 fi
 
 echo ""
@@ -1076,4 +1064,220 @@ else
   echo "Deployment finished successfully"
 fi
 
-# TODO: Workers
+if [[ $INPUT_CREATE_WORKER == 'true' ]]; then
+  echo ""
+  echo '* Get server site workers'
+  API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/sites/$SITE_ID/workers"
+
+  if [[ $INPUT_DEBUG == 'true' ]]; then
+    echo "[DEBUG] CURL GET on $API_URL"
+    echo ""
+  fi
+
+  JSON_RESPONSE=$(
+    curl -s -H "$AUTH_HEADER" \
+      -H "Accept: application/json" \
+      "$API_URL"
+  )
+  echo "$JSON_RESPONSE" > workers.json
+
+  if [[ $INPUT_DEBUG == 'true' ]]; then
+    echo "[DEBUG] response JSON:"
+    echo $JSON_RESPONSE
+    echo ""
+  fi
+
+  # Check if worker exists
+  WORKER_EXISTS=$(jq -r '(.data | length) > 0' workers.json)
+
+  if [[ $WORKER_EXISTS == 'false' ]]; then
+    echo "Worker not found"
+
+    echo ""
+    echo "* Create review-app worker"
+    echo ""
+
+    API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/workers/$SITE_ID"
+
+    JSON_PAYLOAD='{
+      "name": "'"$INPUT_WORKER_NAME"'",
+      "command": "'"$INPUT_WORKER_COMMAND"'",
+      "user": "'"$INPUT_WORKER_USER"'",
+      "auto_start": '$INPUT_WORKER_AUTO_START',
+      "auto_restart": '$INPUT_WORKER_AUTO_RESTART',
+      "numprocs": '$INPUT_WORKER_NUMPROCS'
+    }'
+
+    if [[ $DEBUG == 'true' ]]; then
+      echo "[DEBUG] CURL POST on $API_URL with payload :"
+      echo $JSON_PAYLOAD
+      echo ""
+    fi
+
+    HTTP_STATUS=$(
+      curl -s -o response.json -w "%{http_code}" \
+        -X POST \
+        -H "$AUTH_HEADER" \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_PAYLOAD" \
+        "$API_URL"
+    )
+
+    JSON_RESPONSE=$(cat response.json)
+    if [[ $HTTP_STATUS -eq 201 ]]; then
+      if [[ $INPUT_DEBUG == 'true' ]]; then
+        echo "[DEBUG] response JSON:"
+        echo $JSON_RESPONSE
+        echo ""
+      fi
+    else
+      echo "Failed to create worker. HTTP status code: $HTTP_STATUS"
+      echo "JSON Response:"
+      echo "$JSON_RESPONSE"
+      exit 1
+    fi
+
+    WORKER_ID=$(jq -r '.id' response.json)
+
+    if [[ -n "$GITHUB_ACTIONS" && "$GITHUB_ACTIONS" == "true" ]]; then
+      echo "worker_id=WORKER_ID" >> $GITHUB_OUTPUT
+    fi
+
+    echo "Worker (ID $WORKER_ID) is being created"
+
+    echo ""
+    echo "* Wait for worker to be fully created and running"
+
+    API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/sites/$SITE_ID/workers/$WORKER_ID"
+
+    start_time=$(date +%s)
+    elapsed_time=0
+    status=""
+
+    if [[ $INPUT_WORKER_AUTO_START == 'true' ]]; then
+      final_status='running'
+    else
+      final_status='running'
+      # Not sure, but may be "stopped" when autostart is not requested? Vito here: https://github.com/vitodeploy/vito/blob/24d3b466d97c30c432f04cf1a73a13e9813a8baa/app/Actions/Worker/CreateWorker.php#L54
+      # $final_status='stopped'
+    fi
+
+    while [[ "$status" != "$final_status" && "$elapsed_time" -lt $INPUT_SITE_SETUP_TIMEOUT ]]; do
+      if [[ $INPUT_DEBUG == 'true' ]]; then
+        echo "[DEBUG] CURL GET on $API_URL "
+        echo ""
+      fi
+
+      HTTP_STATUS=$(
+        curl -s -o response.json -w "%{http_code}" \
+        -X GET \
+        -H "$AUTH_HEADER" \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        "$API_URL"
+      )
+
+      JSON_RESPONSE=$(cat response.json)
+
+      if [[ $INPUT_DEBUG == 'true' ]]; then
+        echo "[DEBUG] response JSON:"
+        echo $JSON_RESPONSE
+        echo ""
+      fi
+
+      if [[ "$HTTP_STATUS" != "200" ]]; then
+        echo "Response code is not 200 but $HTTP_STATUS"
+        echo "API Response:"
+        echo "$JSON_RESPONSE"
+        exit 1
+      fi
+
+      status=$(echo "$JSON_RESPONSE" | jq -r '."status"')
+
+      if [[ "$status" == "failed" ]]; then
+        echo "Status is \"failed\""
+        exit 1
+      fi
+
+      if [[ "$status" != "$final_status" ]]; then
+        echo "Status is not \"$final_status\" (but \""$status"\"), retrying in 5 seconds..."
+        sleep 5
+      fi
+
+      current_time=$(date +%s)
+      elapsed_time=$((current_time - start_time))
+    done
+
+    if [[ "$status" != "$final_status" ]]; then
+      echo "Timeout reached, exiting retry loop."
+      exit 1
+    else
+      echo "Worker installed successfully"
+    fi
+  else
+    echo "Worker found"
+    echo ""
+    echo "* Update review-app worker configuration"
+    echo ""
+
+    FIRST_WORKER_DATA=$(jq -r '.data[0]' workers.json)
+
+    echo "$FIRST_WORKER_DATA" > first_worker.json
+    WORKER_ID=$(jq -r '.id' first_worker.json)
+
+    if [[ -n "$GITHUB_ACTIONS" && "$GITHUB_ACTIONS" == "true" ]]; then
+      echo "worker_id=WORKER_ID" >> $GITHUB_OUTPUT
+    fi
+
+    if [[ $INPUT_DEBUG == 'true' ]]; then
+      echo "[DEBUG] first worker DATA JSON:"
+      echo $FIRST_WORKER_DATA
+      echo ""
+    fi
+
+    API_URL="$INPUT_API_BASE_URL/projects/$INPUT_PROJECT_ID/servers/$INPUT_SERVER_ID/workers/$WORKER_ID/$SITE_ID"
+
+    JSON_PAYLOAD='{
+      "name": "'"$INPUT_WORKER_NAME"'",
+      "command": "'"$INPUT_WORKER_COMMAND"'",
+      "user": "'"$INPUT_WORKER_USER"'",
+      "auto_start": '$INPUT_WORKER_AUTO_START',
+      "auto_restart": '$INPUT_WORKER_AUTO_RESTART',
+      "numprocs": '$INPUT_WORKER_NUMPROCS'
+    }'
+
+    if [[ $INPUT_DEBUG == 'true' ]]; then
+      echo "[DEBUG] CURL PUT on $API_URL with payload :"
+      echo $JSON_PAYLOAD
+      echo ""
+    fi
+
+    HTTP_STATUS=$(
+      curl -s -o response.json -w "%{http_code}" \
+        -X PUT \
+        -H "$AUTH_HEADER" \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_PAYLOAD" \
+        "$API_URL"
+    )
+
+    # TODO: Wait for update to be complete.
+    JSON_RESPONSE=$(cat response.json)
+    if [[ $HTTP_STATUS -eq 200 ]]; then
+      if [[ $INPUT_DEBUG == 'true' ]]; then
+        echo "[DEBUG] response JSON:"
+        echo $JSON_RESPONSE
+        echo ""
+      fi
+    else
+      echo "Failed to update worker. HTTP status code: $HTTP_STATUS"
+      echo "JSON Response:"
+      echo "$JSON_RESPONSE"
+      exit 1
+    fi
+
+    echo "Worker (ID $WORKER_ID) updated successfully"
+  fi
+fi
